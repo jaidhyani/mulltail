@@ -1,9 +1,15 @@
+# Compose file for running mulltail from pre-built GHCR images.
+# Use this if you don't want to clone the repo / build locally.
+#
+#   curl -fsSL https://raw.githubusercontent.com/jaidhyani/mulltail/main/docker-compose.ghcr.yml -o docker-compose.yml
+#   curl -fsSL https://raw.githubusercontent.com/jaidhyani/mulltail/main/.env.example -o .env
+#   $EDITOR .env
+#   docker compose up -d
+
 services:
   exit-node:
-    build: ./exit-node
+    image: ghcr.io/jaidhyani/mulltail-exit:${MULLTAIL_VERSION:-latest}
     container_name: ${MULLTAIL_EXIT_CONTAINER:-mulltail-exit}
-    # WireGuard tunnels need broad netns / sysctl / iptables access.
-    # Privileged matches how mainstream wg-in-docker images run; see README.
     privileged: true
     devices:
       - /dev/net/tun:/dev/net/tun
@@ -22,12 +28,8 @@ services:
     restart: unless-stopped
 
   ui:
-    build: ./ui
+    image: ghcr.io/jaidhyani/mulltail-ui:${MULLTAIL_VERSION:-latest}
     container_name: ${MULLTAIL_UI_CONTAINER:-mulltail-ui}
-    # Bound to loopback by default. The UI mounts the docker socket
-    # (root-equivalent on the host), so do NOT expose this on a public
-    # interface. Reach the UI via `./mulltail share` (Tailscale serve)
-    # or set MULLTAIL_UI_BIND=0.0.0.0 only on a trusted network.
     ports:
       - "${MULLTAIL_UI_BIND:-127.0.0.1}:${MULLTAIL_UI_PORT:-8191}:8191"
     volumes:

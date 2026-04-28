@@ -18,7 +18,22 @@ One Mullvad subscription. One Tailscale account. Any device on your tailnet
 can use this as its exit node — including phones — and you can pick the
 exit country/city from a map.
 
-## Quickstart
+## Quickstart — pre-built images (no clone, no build)
+
+```bash
+# Grab just the runtime files:
+mkdir mulltail && cd mulltail
+curl -fsSL https://raw.githubusercontent.com/jaidhyani/mulltail/main/docker-compose.ghcr.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/jaidhyani/mulltail/main/.env.example -o .env
+$EDITOR .env   # fill in MULLVAD_ACCOUNT_NUMBER and TS_AUTHKEY
+docker compose up -d
+```
+
+UI lives at `http://localhost:8191`. Multi-arch images (amd64 + arm64)
+are published on every release tag at
+`ghcr.io/jaidhyani/mulltail-{exit,ui}`.
+
+## Quickstart — clone the repo (interactive setup, builds locally)
 
 You need:
 
@@ -51,6 +66,21 @@ After it boots:
    ```bash
    tailscale up --exit-node=mulltail --exit-node-allow-lan-access
    ```
+
+### Reaching the UI from another device on your tailnet
+
+By default the UI is bound to `127.0.0.1` on the host because it has the
+Docker socket mounted (root-equivalent — see [Security](#security)). To
+expose it tailnet-only over HTTPS:
+
+```bash
+./mulltail share
+```
+
+This runs `tailscale serve` from inside the exit-node container, publishing
+the UI at `https://<TS_HOSTNAME>.<your-tailnet>.ts.net/` — reachable from
+any tailnet device, encrypted, MagicDNS-named, and never exposed to the
+public internet. Stop with `./mulltail unshare`.
 
 ## Commands
 
@@ -122,8 +152,10 @@ records until you remove them manually.
   the mainstream wg-in-docker pattern. If you're hosting alongside untrusted
   workloads, isolate the Docker host or run on a dedicated VM.
 - The `ui` container mounts `/var/run/docker.sock`. That's effectively root
-  on the host. **Do not expose port 8191 to the public internet.** Reach it
-  via Tailscale (`tailscale serve`) or a reverse proxy with auth.
+  on the host. The default compose binding is `127.0.0.1:8191` — **do not
+  bind it to a public interface.** To reach the UI from elsewhere on your
+  tailnet, use `./mulltail share` (Tailscale serve, end-to-end encrypted,
+  tailnet-only) instead of changing `MULLTAIL_UI_BIND`.
 - `.env` contains your Mullvad account number and a Tailscale auth key. It's
   gitignored; `mulltail` writes it `chmod 600`. Treat it like a credential.
 

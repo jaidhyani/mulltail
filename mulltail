@@ -116,9 +116,10 @@ Next:
   3. On any tailnet device, set this as the exit node:
      tailscale up --exit-node=<hostname>
 
-Logs:    ./mulltail logs
-Status:  ./mulltail status
-Stop:    ./mulltail down
+Logs:     ./mulltail logs
+Status:   ./mulltail status
+Share UI: ./mulltail share     (publish on your tailnet via Tailscale serve)
+Stop:     ./mulltail down
 EOF
 }
 
@@ -158,6 +159,26 @@ cmd_status() {
     docker compose exec -T exit-node tailscale status 2>/dev/null || warn "  (tailscale not ready)"
 }
 
+cmd_share() {
+    require_docker
+    bold "Publishing UI on your tailnet via 'tailscale serve'…"
+    # The exit-node container is the one on the tailnet; it can reach the ui
+    # container by service name on the compose network. After this, the UI
+    # is at https://<TS_HOSTNAME>.<your-tailnet>.ts.net/ on any tailnet device.
+    docker compose exec -T exit-node tailscale serve --bg --https=443 http://ui:8191
+    echo
+    docker compose exec -T exit-node tailscale serve status || true
+    echo
+    green "UI is now published on your tailnet (HTTPS, MagicDNS)."
+    dim   "Stop sharing: ./mulltail unshare"
+}
+
+cmd_unshare() {
+    require_docker
+    docker compose exec -T exit-node tailscale serve reset || true
+    green "Stopped publishing the UI."
+}
+
 cmd_config() {
     if [ ! -f "$ENV_FILE" ]; then
         warn "$ENV_FILE doesn't exist yet — run './mulltail up' first."
@@ -177,6 +198,8 @@ Usage:
   ./mulltail down          Stop containers (state preserved)
   ./mulltail status        Show container + exit IP + tailscale status
   ./mulltail logs [svc]    Tail logs (svc: exit-node | ui)
+  ./mulltail share         Publish the UI on your tailnet (tailscale serve)
+  ./mulltail unshare       Stop publishing the UI
   ./mulltail config        Edit .env in $EDITOR
   ./mulltail destroy       Stop and delete all state volumes
   ./mulltail help          This message
@@ -189,6 +212,8 @@ case "${1:-up}" in
     destroy) shift || true; cmd_destroy "$@" ;;
     logs)    shift || true; cmd_logs "$@" ;;
     status)  shift || true; cmd_status "$@" ;;
+    share)   shift || true; cmd_share "$@" ;;
+    unshare) shift || true; cmd_unshare "$@" ;;
     config)  shift || true; cmd_config "$@" ;;
     help|-h|--help) cmd_help ;;
     *) red "unknown subcommand: $1"; cmd_help; exit 1 ;;
