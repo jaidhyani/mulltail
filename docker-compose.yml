@@ -1,0 +1,39 @@
+services:
+  exit-node:
+    build: ./exit-node
+    container_name: ${MULLTAIL_EXIT_CONTAINER:-mulltail-exit}
+    # WireGuard tunnels need broad netns / sysctl / iptables access.
+    # Privileged matches how mainstream wg-in-docker images run; see README.
+    privileged: true
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - mullvad-wg:/etc/mullvad-wg
+      - ts-state:/var/lib/tailscale
+    environment:
+      - MULLVAD_ACCOUNT_NUMBER=${MULLVAD_ACCOUNT_NUMBER}
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_HOSTNAME=${TS_HOSTNAME:-mulltail}
+      - MULLTAIL_LOCATION=${MULLTAIL_LOCATION:-us-sea}
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
+  ui:
+    build: ./ui
+    container_name: ${MULLTAIL_UI_CONTAINER:-mulltail-ui}
+    ports:
+      - "${MULLTAIL_UI_PORT:-8191}:8191"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - MULLTAIL_EXIT_CONTAINER=${MULLTAIL_EXIT_CONTAINER:-mulltail-exit}
+    depends_on:
+      - exit-node
+    restart: unless-stopped
+
+volumes:
+  mullvad-wg:
+  ts-state:
