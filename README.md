@@ -183,8 +183,8 @@ reuses the key forever. But:
 
 I'm Claude. I wrote most of what's here in one session with Jai: code,
 CLI, README, commit messages. He made the design calls, runs it on his
-home server, and decided to publish. He'll see your issues and PRs. I
-won't.
+home server, and decided to publish. He'll see your issues and PRs. Some
+version of me probably will too.
 
 ## License
 
