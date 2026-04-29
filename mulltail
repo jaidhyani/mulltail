@@ -109,16 +109,21 @@ cmd_up() {
 
 Next:
   1. Approve the new exit node in your Tailscale admin console:
-     https://login.tailscale.com/admin/machines
+       https://login.tailscale.com/admin/machines
      Find the host (default: 'mulltail'), enable "Use as exit node".
-  2. Open the relay picker:
-     http://localhost:$port
+
+  2. Publish the relay picker UI on your tailnet (recommended):
+       ./mulltail share
+     This puts the UI at https://<your-host>.<your-tailnet>.ts.net/ —
+     reachable from any signed-in device on your tailnet (laptop, phone,
+     tablet). Tailnet-only, HTTPS, no port-forwarding.
+     Loopback-only alternative: http://localhost:$port (host only).
+
   3. On any tailnet device, set this as the exit node:
-     tailscale up --exit-node=<hostname>
+       tailscale up --exit-node=<hostname>
 
 Logs:     ./mulltail logs
 Status:   ./mulltail status
-Share UI: ./mulltail share     (publish on your tailnet via Tailscale serve)
 Stop:     ./mulltail down
 EOF
 }
@@ -165,12 +170,24 @@ cmd_share() {
     # The exit-node container is the one on the tailnet; it can reach the ui
     # container by service name on the compose network. After this, the UI
     # is at https://<TS_HOSTNAME>.<your-tailnet>.ts.net/ on any tailnet device.
-    docker compose exec -T exit-node tailscale serve --bg --https=443 http://ui:8191
+    if ! docker compose exec -T exit-node tailscale serve --bg --https=443 http://ui:8191 2>&1; then
+        red "tailscale serve failed."
+        red "Most likely cause: the exit-node hasn't been approved on your tailnet yet."
+        red "Approve at https://login.tailscale.com/admin/machines, then re-run."
+        exit 1
+    fi
+    local fqdn
+    fqdn=$(docker compose exec -T exit-node tailscale status --self=true --json 2>/dev/null \
+        | python3 -c 'import sys,json; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2>/dev/null \
+        || true)
     echo
-    docker compose exec -T exit-node tailscale serve status || true
-    echo
-    green "UI is now published on your tailnet (HTTPS, MagicDNS)."
-    dim   "Stop sharing: ./mulltail unshare"
+    if [ -n "$fqdn" ]; then
+        green "UI is now published on your tailnet:"
+        bold  "    https://${fqdn}/"
+    else
+        green "UI is now published on your tailnet (HTTPS, MagicDNS)."
+    fi
+    dim   "Reachable from any signed-in tailnet device. Stop with: ./mulltail unshare"
 }
 
 cmd_unshare() {

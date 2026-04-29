@@ -1,21 +1,31 @@
 # mulltail
 
 A self-hosted [Tailscale](https://tailscale.com) exit node that routes its
-traffic through [Mullvad VPN](https://mullvad.net), with a web UI to switch
-exit relays from anywhere on your tailnet.
+traffic through [Mullvad VPN](https://mullvad.net), with a web UI you can
+reach from any device on your tailnet to switch exit relays — phone, laptop,
+anything signed in.
 
 ```
-your laptop          tailnet               mulltail container          internet
-   ┌─┐    ── exit-node ──>   ┌──────────────────┐   wireguard   ┌────────┐
-   │ │ ─────────────────────>│ tailscaled  +  wg │ ────────────> │ Mullvad │
-   └─┘                       └──────────────────┘               └────────┘
-                                       │
-                                  http://host:8191
-                              (relay-picker UI)
+                              ╭───── relay picker UI ─────╮
+                              │  https://mulltail.tail-   │
+                              │      xyz.ts.net/          │   tailnet-only,
+                              │  (any device, MagicDNS)   │   HTTPS, no auth
+                              ╰─────────────┬─────────────╯   tunnel
+                                            │
+your devices ── exit-node ──> ╭─────────────┴─────────────╮  wireguard  ╭──────╮
+   ┌─┐  ┌─┐  ┌─┐              │   tailscaled  +  wg-quick   │ ─────────> │Mullvad│
+   └─┘  └─┘  └─┘              ╰─────────────────────────────╯            ╰──────╯
+       (any tailnet device)         (mulltail container)                  (exit)
 ```
+
+**Headline feature: the UI is reachable from anywhere on your tailnet.** Run
+`./mulltail share` once and the relay picker is published at
+`https://<TS_HOSTNAME>.<your-tailnet>.ts.net/` over HTTPS, MagicDNS-named,
+never on the public internet, no port-forwarding, no extra auth. Switch your
+exit country from your phone in one tap.
 
 One Mullvad subscription. One Tailscale account. Any device on your tailnet
-can use this as its exit node — including phones — and you can pick the
+can use this as its exit node, and any device on your tailnet can pick the
 exit country/city from a map.
 
 ## Quickstart — pre-built images (no clone, no build)
@@ -57,30 +67,29 @@ write the answers to `.env`, build the containers, and bring everything up.
 
 After it boots:
 
-1. Approve the new node at
+1. **Approve the new node** at
    [login.tailscale.com/admin/machines](https://login.tailscale.com/admin/machines)
    and enable "Use as exit node."
-2. Open `http://localhost:8191` to pick or switch the Mullvad exit relay.
-3. On any tailnet device:
+2. **Publish the UI on your tailnet** so you can reach it from any device:
+
+   ```bash
+   ./mulltail share
+   ```
+
+   This runs `tailscale serve` from inside the exit-node container, putting
+   the relay picker at `https://<TS_HOSTNAME>.<your-tailnet>.ts.net/` —
+   tailnet-only, HTTPS, MagicDNS, no public exposure. Open that URL from
+   anywhere on your tailnet (phone, work laptop, tablet) to switch relays.
+
+   Want it loopback-only? Skip step 2 and use `http://localhost:8191` from
+   the host. The default compose binding is `127.0.0.1:8191` precisely so
+   you can choose explicitly. Stop sharing any time with `./mulltail unshare`.
+
+3. **Use it as an exit node** on any tailnet device:
 
    ```bash
    tailscale up --exit-node=mulltail --exit-node-allow-lan-access
    ```
-
-### Reaching the UI from another device on your tailnet
-
-By default the UI is bound to `127.0.0.1` on the host because it has the
-Docker socket mounted (root-equivalent — see [Security](#security)). To
-expose it tailnet-only over HTTPS:
-
-```bash
-./mulltail share
-```
-
-This runs `tailscale serve` from inside the exit-node container, publishing
-the UI at `https://<TS_HOSTNAME>.<your-tailnet>.ts.net/` — reachable from
-any tailnet device, encrypted, MagicDNS-named, and never exposed to the
-public internet. Stop with `./mulltail unshare`.
 
 ## Commands
 
