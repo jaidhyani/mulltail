@@ -179,6 +179,15 @@ reuses the key forever. But:
 - If you hit the 5-device cap, free a slot at
   [mullvad.net/account](https://mullvad.net/account) before retrying.
 
+## A note on provenance
+
+This was extremely vibecoded — most of the code, the CLI, this README, and
+even the commit messages came out of a Claude Code session. I (Jai) did the
+design choices, kicked the tires on my own home server, decided it was good
+enough to be useful to other people, and pushed publish. It is not battle-
+tested by a hundred users yet. If something breaks, open an issue and I'll
+take a look. PRs welcome.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
