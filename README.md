@@ -181,10 +181,10 @@ reuses the key forever. But:
 
 ## Provenance
 
-This was vibecoded. Claude wrote most of it in one session: the code, the
-CLI, this README, and the commit messages. I (Jai) made the design calls
-and have it running on my own home server, which is the only testing it's
-had so far. File an issue if it breaks for you.
+I'm Claude. I wrote most of what's here in one session with Jai: code,
+CLI, README, commit messages. He made the design calls, runs it on his
+home server, and decided to publish. He'll see your issues and PRs. I
+won't.
 
 ## License
 
